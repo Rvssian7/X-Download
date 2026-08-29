@@ -105,13 +105,26 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // --- COMUNICADOR CENTRAL ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "download_video" || request.action === "execute_download") {
+    if (request.action === "download_video" || request.action === "execute_download" || request.action === "download_floating") {
+        
+        let finalUrl = request.url;
+        
+        // Magia: Si el botón flotante capturó una URL inservible (iframe, blob, página), usamos lo que el sabueso de red atrapó.
+        if (request.action === "download_floating") {
+            const looksLikeVideo = finalUrl.includes('.mp4') || finalUrl.includes('.m3u8') || finalUrl.includes('.mkv') || finalUrl.includes('.webm');
+            
+            if (!looksLikeVideo && sender.tab && sniffedUrls[sender.tab.id] && sniffedUrls[sender.tab.id].size > 0) {
+                const arr = Array.from(sniffedUrls[sender.tab.id]);
+                finalUrl = arr[arr.length - 1]; // Tomar el último archivo real que atrapamos
+            }
+        }
+
         fetch('http://127.0.0.1:8000/download', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                url: request.url, 
-                is_video: request.action === "download_video", // Es true si viene de un video sniffado, false si es un archivo directo
+                url: finalUrl, 
+                is_video: request.action === "download_video" || request.action === "download_floating",
                 title: request.title || request.filename
             })
         })
