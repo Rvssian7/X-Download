@@ -16,53 +16,70 @@ Esta herramienta está diseñada para interceptar tráfico de red en tiempo real
 ---
 
 ## 📋 Requisitos Previos
-Antes de instalar X-Download, asegúrate de tener lo siguiente en tu sistema:
-1. **Sistema Operativo:** macOS (Requerido para las notificaciones nativas y el archivo de arranque `.command`).
-2. **Python:** Versión 3.9 o superior.
-3. **Navegador:** Google Chrome (Para instalar la extensión).
-4. **FFmpeg (Recomendado):** Necesario para que `yt-dlp` pueda unir video y audio en máxima calidad. Instálalo desde la terminal con:
-   ```bash
-   brew install ffmpeg
-   ```
+Para usar X-Download, asegúrate de cumplir con estos requisitos básicos:
+1. **Sistema Operativo:** Funciona en **macOS** y **Windows**.
+2. **Python:** Versión 3.9 o superior instalada en tu sistema.
+3. **Navegador:** Google Chrome o Brave (Para poder instalar la extensión).
+4. **FFmpeg (Recomendado):** Es vital para que `yt-dlp` pueda fusionar el video en 4K con el audio HQ. 
+   - **En Mac:** `brew install ffmpeg`
+   - **En Windows:** Descárgalo usando `winget install ffmpeg` o desde su sitio web oficial.
 
 ---
 
-## ⚙️ Instalación
+## ⚙️ Instalación Paso a Paso (Para Principiantes)
 
-### 1. Clonar el Repositorio
-Abre tu terminal y descarga el código fuente:
+### Paso 1: Descargar el Proyecto
+Abre tu terminal (o Símbolo del Sistema en Windows) y descarga el código:
 ```bash
 git clone https://github.com/Rvssian7/X-Download.git
 cd X-Download
 ```
 
-### 2. Configurar el Motor (Backend)
-Crea el entorno virtual de Python y descarga las dependencias necesarias:
+### Paso 2: Instalar el Motor (Backend)
+Debemos instalar las librerías de Python. Ejecuta los siguientes comandos dependiendo de tu sistema operativo:
+
+**🍎 En Mac / Linux:**
 ```bash
 cd backend
 python3 -m venv venv
 source venv/bin/activate
-pip install fastapi uvicorn yt-dlp websockets
+pip install -r requirements.txt
+cd ..
 ```
 
-### 3. Instalar la Extensión de Chrome
-1. Abre Google Chrome y ve a la ruta `chrome://extensions/`.
-2. Activa el **Modo Desarrollador** (Interruptor en la esquina superior derecha).
-3. Haz clic en el botón **"Cargar descomprimida"** (Load unpacked).
-4. Selecciona la carpeta `extension` que viene dentro de este proyecto.
-5. Fija la extensión en la barra de tareas de tu navegador.
+**🪟 En Windows:**
+```cmd
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+cd ..
+```
+
+### Paso 3: Instalar la Extensión en Chrome
+1. Abre Google Chrome y escribe en la barra de direcciones: `chrome://extensions/`
+2. Activa el **Modo Desarrollador** (El interruptor arriba a la derecha).
+3. Haz clic en el botón superior izquierdo que dice **"Cargar descomprimida"** (Load unpacked).
+4. Selecciona la carpeta llamada `extension` que viene dentro de la carpeta de este proyecto.
+5. Haz clic en el ícono del rompecabezas en Chrome y "fija" el ícono del perrito (El Sabueso) para tenerlo siempre a mano.
 
 ---
 
-## 🚀 Uso
+## 🚀 Cómo Usarlo en el Día a Día
 
-1. **Encender el motor:** Ve a la carpeta principal del proyecto y haz doble clic en el archivo `start_x_download.command`. Esto abrirá una terminal que dejará el servidor corriendo de fondo en consumo ultra-bajo de RAM.
-2. **Abrir el Panel:** Ingresa desde cualquier navegador a [http://127.0.0.1:8000](http://127.0.0.1:8000) para ver tu panel de control.
-3. **Descargar un Video:**
-   - Si estás en un sitio soportado (YouTube, Vimeo, Twitter), verás un botón flotante **rojo** sobre el video.
-   - Si estás en una página compleja de streaming, abre la extensión **"El Sabueso"** en tu navegador, recarga la página con `F5` y captura la URL de transmisión pura.
+### 1. Encender el servidor
+Ve a la carpeta principal del proyecto y haz **doble clic** en tu archivo de arranque. Esto dejará el motor corriendo en segundo plano:
+- 🍎 **Usuarios Mac:** Doble clic en `start_x_download.command`.
+- 🪟 **Usuarios Windows:** Doble clic en `start_x_download.bat`.
 
-Tus descargas y logs se guardarán automáticamente en la ruta: `~/Downloads/X-Download/`.
+### 2. Abrir tu Panel de Control
+Ingresa desde tu navegador a [http://127.0.0.1:8000](http://127.0.0.1:8000) para ver y administrar tus descargas en tiempo real.
+
+### 3. ¡Descargar!
+- **Modo Página Completa:** Si estás en YouTube, Vimeo o Twitter, abre el menú del perrito en tu barra de Chrome y presiona el botón negro *"⬇ Descargar esta página web"*.
+- **Modo Sabueso (Pirata):** Si estás en una página de streaming de películas, abre el menú del perrito, dale "Play" a la película en la página web, y verás cómo el radar atrapa el video puro para que lo descargues con el botón rojo.
+
+Tus archivos finales se guardarán mágicamente en: `Descargas/X-Download/`.
 
 ---
 
