@@ -118,14 +118,14 @@ async def run_download_process(did: str):
             }
             fmt = q_map.get(d.get("quality", "best"), "bestvideo+bestaudio/best")
             
-            cmd = ["yt-dlp", "-f", fmt, "--newline"]
+            cmd = ["yt-dlp", "-f", fmt, "--newline", "--no-check-certificate"]
             if speed_limit:
                 cmd.extend(["--limit-rate", speed_limit])
             if d.get("quality") == "audio":
                 cmd.extend(['--extract-audio', '--audio-format', 'mp3'])
             cmd.extend(["--output", os.path.join(out_folder, f"{safe_title}.%(ext)s"), d["url"]])
         else:
-            cmd = ["aria2c", "-x", "16", "-s", "16", "--continue=true", "--file-allocation=none", "--summary-interval=1", "--dir", out_folder]
+            cmd = ["aria2c", "-x", "16", "-s", "16", "--continue=true", "--file-allocation=none", "--summary-interval=1", "--check-certificate=false", "--dir", out_folder]
             if speed_limit:
                 cmd.extend(["--max-overall-download-limit", speed_limit])
             cmd.append(d["url"])
