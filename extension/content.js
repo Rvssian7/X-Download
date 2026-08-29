@@ -168,13 +168,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 
                 foundHover = true;
                 
-                // Posicionar el botón flotante en la esquina superior derecha del video
+                // Posicionar el botón flotante JUSTO AFUERA (arriba) del video
                 floatBtn.style.display = 'flex';
-                floatBtn.style.top = (rect.top + 15) + 'px';
                 
-                // Si el botón ya tiene ancho, ajustamos. Si es nuevo, asumimos ~120px
-                const btnWidth = floatBtn.offsetWidth || 120;
-                floatBtn.style.left = (rect.right - btnWidth - 15) + 'px';
+                const btnWidth = floatBtn.offsetWidth || 130;
+                const btnHeight = floatBtn.offsetHeight || 28;
+                
+                // Intentar ponerlo justo encima del borde superior
+                let targetTop = rect.top - btnHeight;
+                
+                // Si el video está pegado al techo del navegador y no hay espacio, lo bajamos un poco
+                if (targetTop < 0) {
+                    targetTop = rect.top + 5;
+                }
+                
+                floatBtn.style.top = targetTop + 'px';
+                // Alinearlo al borde derecho del video
+                floatBtn.style.left = (rect.right - btnWidth) + 'px';
                 
                 currentVideoUrl = videos[i].src || videos[i].currentSrc || window.location.href;
                 
