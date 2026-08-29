@@ -70,8 +70,11 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        // Invertimos las llaves para que la más reciente quede de primera
-        const downloadIds = Object.keys(data).reverse();
+        // Filtramos para mostrar SOLO lo activo (ocultar historial) y lo invertimos
+        const downloadIds = Object.keys(data).filter(id => {
+            const st = data[id].status;
+            return st !== "Completado" && st !== "Cancelado" && st !== "Error";
+        }).reverse();
         
         if (downloadIds.length === 0) {
             dlArea.innerHTML = `<div class="dl-empty">No hay descargas activas</div>`;
