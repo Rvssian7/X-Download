@@ -7,6 +7,11 @@ from app.services.logger import logger
 from datetime import datetime
 
 router = APIRouter()
+downloads = get_downloads()
+
+@router.get("/ping")
+def ping():
+    return {"status": "ok"}
 
 @router.get("/progress")
 def get_progress():
