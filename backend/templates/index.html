@@ -150,7 +150,11 @@
                     controlsHtml += `<button class="btn-delete" onclick="sendAction('${id}', 'delete')">Eliminar</button>`;
                     
                     dlDiv.innerHTML = `
-                        <div class="filename">${info.title} ${typeBadge}</div>
+                        <div class="filename">
+                            ${info.title || 'Video'} 
+                            <span class="badge">${info.is_video ? 'VIDEO' : 'ARCHIVO'}</span>
+                            <span style="float:right; font-size: 11px; color: #555; font-weight: normal;">${info.created_at || ''}</span>
+                        </div>
                         <div class="fileurl">${info.url}</div>
                         <div class="progress-bar-container">
                             <div id="bar_${id}" class="progress-bar"></div>

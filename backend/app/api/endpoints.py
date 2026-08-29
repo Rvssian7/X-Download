@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from app.models.schemas import ActionRequest, DownloadRequest, SettingsRequest
 from app.services.download_manager import get_downloads, save_history, run_download_process, delete_download_files
 from app.services.logger import logger
+from datetime import datetime
 
 router = APIRouter()
 
@@ -21,7 +22,8 @@ def get_progress():
             "eta": v.get("eta", ""),
             "size": v.get("size", ""),
             "is_video": v["is_video"],
-            "quality": v.get("quality", "best")
+            "quality": v.get("quality", "best"),
+            "created_at": v.get("created_at", "")
         }
     return res
 
@@ -86,7 +88,8 @@ async def download(req: DownloadRequest):
         "speed": "",
         "eta": "",
         "size": "",
-        "quality": "best"
+        "quality": "best",
+        "created_at": datetime.now().strftime("%d/%m/%Y %H:%M")
     }
     save_history(downloads)
     if not req.is_video:
