@@ -13,10 +13,18 @@ chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
         .then(res => {
             if (res.ok) {
                 chrome.downloads.cancel(downloadItem.id);
-                fetch('http://127.0.0.1:8000/download', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: downloadItem.finalUrl || downloadItem.url, is_video: false, title: downloadItem.filename || "Descarga Directa" })
+                
+                const targetUrl = downloadItem.finalUrl || downloadItem.url;
+                const targetName = downloadItem.filename || "Descarga Directa";
+                
+                const popupUrl = chrome.runtime.getURL(`confirm.html?url=${encodeURIComponent(targetUrl)}&filename=${encodeURIComponent(targetName)}`);
+                
+                chrome.windows.create({
+                    url: popupUrl,
+                    type: "popup",
+                    width: 450,
+                    height: 250,
+                    focused: true
                 });
             }
             suggest();
