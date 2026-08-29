@@ -1,20 +1,50 @@
+const SERVER_URL = "http://127.0.0.1:8000";
 // --- INTERCEPTOR DE DESCARGAS NORMALES ---
-chrome.downloads.onCreated.addListener(async (downloadItem) => {
-    if (downloadItem.state === 'interrupted' || downloadItem.state === 'complete') return;
-    if (downloadItem.url.startsWith('data:') || downloadItem.url.startsWith('blob:')) return;
-    try {
-        const response = await fetch('http://127.0.0.1:8000/ping');
-        if (response.ok) {
-            chrome.downloads.cancel(downloadItem.id);
-            await fetch('http://127.0.0.1:8000/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: downloadItem.finalUrl || downloadItem.url, is_video: false })
-            });
-        }
-    } catch (e) {
-        console.log("Backend offline.");
+chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
+    if (downloadItem.state === 'interrupted' || downloadItem.state === 'complete') {
+        suggest();
+        return false;
     }
+    if (downloadItem.url.startsWith('data:') || downloadItem.url.startsWith('blob:')) {
+        suggest();
+        return false;
+    }
+    
+    fetch('http://127.0.0.1:8000/ping')
+        .then(res => {
+            if (res.ok) {
+                chrome.downloads.cancel(downloadItem.id);
+                
+                const targetUrl = downloadItem.finalUrl || downloadItem.url;
+                const targetName = downloadItem.filename || "Descarga Directa";
+                
+                chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+                    if (tabs.length > 0) {
+                        chrome.tabs.sendMessage(tabs[0].id, {
+                            action: "show_confirm",
+                            url: targetUrl,
+                            filename: targetName
+                        }, (response) => {
+                            if (chrome.runtime.lastError) {
+                                // Fallback: la página no tiene el inyector cargado (ej. no se refrescó o es una pestaña en blanco).
+                                // Lo enviamos directo para no dejar al usuario varado.
+                                fetch('http://127.0.0.1:8000/download', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ url: targetUrl, is_video: false, title: targetName })
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+            suggest();
+        })
+        .catch(e => {
+            suggest();
+        });
+        
+    return true; // Indica que suggest() se llamará de forma asíncrona
 });
 
 // --- SABUESO DE RED (NETWORK SNIFFER) ---
@@ -75,20 +105,28 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // --- COMUNICADOR CENTRAL ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "download_video") {
+    if (request.action === "download_video" || request.action === "execute_download") {
         fetch('http://127.0.0.1:8000/download', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: request.url, is_video: true, title: request.title || "Video" })
+            body: JSON.stringify({ 
+                url: request.url, 
+                is_video: request.action === "download_video", // Es true si viene de un video sniffado, false si es un archivo directo
+                title: request.title || request.filename
+            })
         })
-        .then(res => sendResponse({ success: res.ok }))
-        .catch(e => sendResponse({ success: false }));
-        return true; 
+        .then(res => {
+            if(res.ok) sendResponse({ success: true });
+            else sendResponse({ success: false });
+        })
+        .catch(err => {
+            sendResponse({ success: false });
+        });
+        return true; // Necesario para enviar respuesta de forma asíncrona
     }
-    else if (request.action === "get_sniffed_urls") {
-        // Enviar al popup las URLs que olió el sabueso
-        const tabId = request.tabId;
-        const urls = sniffedUrls[tabId] ? Array.from(sniffedUrls[tabId]) : [];
+    
+    if (request.action === "get_sniffed_urls") {
+        const urls = sniffedUrls[request.tabId] ? Array.from(sniffedUrls[request.tabId]) : [];
         sendResponse({ urls: urls });
         return true;
     }

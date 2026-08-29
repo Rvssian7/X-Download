@@ -1,12 +1,24 @@
+const SERVER_URL = "http://127.0.0.1:8000";
 chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     const tab = tabs[0];
     
-    // Funcionalidad del nuevo botón para capturar la página completa
+    // Botón para abrir el panel
+    const btnPanel = document.getElementById('btn-panel');
+    if (btnPanel) {
+        btnPanel.onclick = () => {
+            chrome.tabs.create({ url: SERVER_URL });
+        };
+    }
+    
     const btnPage = document.getElementById('btn-page');
     if (btnPage) {
         btnPage.onclick = () => {
             btnPage.innerText = "⏳ Enviando...";
-            chrome.runtime.sendMessage({ action: "download_video", url: tab.url, title: tab.title }, (res) => {
+            btnPage.disabled = true;
+            let targetUrl = tab.url;
+            let targetTitle = tab.title;
+            
+            chrome.runtime.sendMessage({ action: "download_video", url: targetUrl, title: targetTitle }, (res) => {
                 if (res && res.success) {
                     btnPage.innerText = "✅ ¡Enviado al Panel!";
                     btnPage.style.background = "#28a745";
