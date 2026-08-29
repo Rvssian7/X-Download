@@ -97,6 +97,14 @@ async def download(req: DownloadRequest):
 
     logger.info(f"Nueva solicitud de descarga recibida: {req.url} (Video: {req.is_video})")
     downloads = get_downloads()
+    
+    # 🛡️ Escudo Anti-Colisión: Prevenir descargas duplicadas simultáneas
+    active_statuses = ["En cola", "Iniciando...", "Esperando Calidad", "Descargando"]
+    for existing_id, d_info in downloads.items():
+        if d_info.get("url") == req.url and d_info.get("status") in active_statuses:
+            logger.warning(f"Colisión evitada: La URL {req.url} ya está activa.")
+            return {"status": "started", "id": existing_id} # Fingimos éxito para calmar al frontend
+            
     did = str(uuid.uuid4())
     status = "Esperando Calidad" if req.is_video else "Iniciando..."
     downloads[did] = {
