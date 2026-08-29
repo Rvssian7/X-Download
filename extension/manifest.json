@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "X-Download",
+  "version": "1.0",
+  "description": "El sabueso de red para X-Download. Captura videos y archivos al vuelo.",
+  "permissions": [
+    "downloads",
+    "activeTab",
+    "scripting",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "all_frames": true,
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Sabueso de Videos"
+  }
+}
