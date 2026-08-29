@@ -24,9 +24,10 @@ chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
     let isVideo = false;
     const url = details.url.toLowerCase();
+    const urlWithoutQuery = url.split('?')[0];
     
     // Filtro por extensión en URL (ignorando .ts que son fragmentos sueltos)
-    if ((url.includes('.m3u8') || url.includes('.mp4') || url.includes('.mkv') || url.includes('.webm')) && !url.includes('.ts')) {
+    if ((urlWithoutQuery.endsWith('.m3u8') || urlWithoutQuery.endsWith('.mp4') || urlWithoutQuery.endsWith('.mkv') || urlWithoutQuery.endsWith('.webm')) && !url.includes('.ts')) {
         isVideo = true;
     }
 
