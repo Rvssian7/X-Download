@@ -1,149 +1,134 @@
-const SERVER_URL = "http://127.0.0.1:8000";
-// --- INTERCEPTOR DE DESCARGAS NORMALES ---
-chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
-    if (downloadItem.state === 'interrupted' || downloadItem.state === 'complete') {
-        suggest();
-        return false;
-    }
-    if (downloadItem.url.startsWith('data:') || downloadItem.url.startsWith('blob:')) {
-        suggest();
-        return false;
-    }
-    
-    fetch('http://127.0.0.1:8000/ping')
-        .then(res => {
-            if (res.ok) {
-                chrome.downloads.cancel(downloadItem.id);
-                
-                const targetUrl = downloadItem.finalUrl || downloadItem.url;
-                const targetName = downloadItem.filename || "Descarga Directa";
-                
-                chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-                    if (tabs.length > 0) {
-                        chrome.tabs.sendMessage(tabs[0].id, {
-                            action: "show_confirm",
-                            url: targetUrl,
-                            filename: targetName
-                        }, (response) => {
-                            if (chrome.runtime.lastError) {
-                                // Fallback: la página no tiene el inyector cargado (ej. no se refrescó o es una pestaña en blanco).
-                                // Lo enviamos directo para no dejar al usuario varado.
-                                fetch('http://127.0.0.1:8000/download', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ url: targetUrl, is_video: false, title: targetName })
-                                });
-                            }
-                        });
-                    }
-                });
-            }
-            suggest();
-        })
-        .catch(e => {
-            suggest();
-        });
-        
-    return true; // Indica que suggest() se llamará de forma asíncrona
-});
+let sniffedUrls = {};
+let badgeInterval = null;
 
-// --- SABUESO DE RED (NETWORK SNIFFER) ---
-let sniffedUrls = {}; // Diccionario: tabId -> Set de URLs
+// Función para actualizar la insignia verde
+function checkDownloads() {
+    fetch('http://127.0.0.1:8000/progress')
+        .then(res => res.json())
+        .then(data => {
+            const activeIds = Object.keys(data).filter(id => {
+                const st = data[id].status;
+                return st !== "Completado" && st !== "Cancelado" && st !== "Error";
+            });
+            
+            if (activeIds.length > 0) {
+                chrome.action.setBadgeText({ text: activeIds.length.toString() });
+                chrome.action.setBadgeBackgroundColor({ color: '#28a745' }); // Verde neón
+                
+                // Si hay descargas activas, asegurarnos de que el ciclo de chequeo esté vivo
+                if (!badgeInterval) {
+                    badgeInterval = setInterval(checkDownloads, 3000);
+                }
+            } else {
+                // No hay descargas: Limpiar insignia y apagar el motor para no gastar CPU/RAM
+                chrome.action.setBadgeText({ text: '' });
+                if (badgeInterval) {
+                    clearInterval(badgeInterval);
+                    badgeInterval = null;
+                }
+            }
+        })
+        .catch(err => {
+            // Servidor apagado
+            chrome.action.setBadgeText({ text: '' });
+            if (badgeInterval) {
+                clearInterval(badgeInterval);
+                badgeInterval = null;
+            }
+        });
+}
+
+// Ejecutar revisión inmediatamente al despertar la extensión
+checkDownloads();
 
 chrome.webRequest.onHeadersReceived.addListener(
-  (details) => {
-    let isVideo = false;
-    const url = details.url.toLowerCase();
-    const urlWithoutQuery = url.split('?')[0];
-    
-    // Filtro por extensión en URL (ignorando .ts que son fragmentos sueltos)
-    if ((urlWithoutQuery.endsWith('.m3u8') || urlWithoutQuery.endsWith('.mp4') || urlWithoutQuery.endsWith('.mkv') || urlWithoutQuery.endsWith('.webm')) && !url.includes('.ts')) {
-        isVideo = true;
-    }
+    function(details) {
+        if (details.type === 'main_frame' || details.type === 'sub_frame') return;
 
-    // Filtro por cabeceras HTTP de respuesta (para URLs ofuscadas sin extensión)
-    if (details.responseHeaders) {
-        for (let header of details.responseHeaders) {
-            if (header.name.toLowerCase() === 'content-type') {
-                const type = header.value.toLowerCase();
-                if (type.includes('video/') || type.includes('mpegurl') || type.includes('application/x-mpegurl')) {
-                    if (!type.includes('mp2t') && !url.includes('.ts')) { // Ignorar fragmentos TS
-                        isVideo = true;
-                    }
-                }
+        let contentType = '';
+        for (let i = 0; i < details.responseHeaders.length; ++i) {
+            if (details.responseHeaders[i].name.toLowerCase() === 'content-type') {
+                contentType = details.responseHeaders[i].value.toLowerCase();
                 break;
             }
         }
-    }
 
-    if (isVideo) {
-        const tabId = details.tabId;
-        if (tabId >= 0) {
-            if (!sniffedUrls[tabId]) sniffedUrls[tabId] = new Set();
-            sniffedUrls[tabId].add(details.url);
+        // Filtro de Rayos X: Detectar M3U8 o videos aunque no tengan extensión
+        if (contentType.includes('video/') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegurl')) {
+            // Ignorar los fragmentos pequeños .ts
+            if (details.url.includes('.ts') || details.url.includes('.js')) return;
+
+            if (!sniffedUrls[details.tabId]) {
+                sniffedUrls[details.tabId] = new Set();
+            }
+            sniffedUrls[details.tabId].add(details.url);
             
-            chrome.action.setBadgeText({ text: sniffedUrls[tabId].size.toString(), tabId: tabId });
-            chrome.action.setBadgeBackgroundColor({ color: '#ff0055', tabId: tabId });
+            // Actualizar el número del sabueso (solo si no hay descargas activas que requieran la insignia verde)
+            fetch('http://127.0.0.1:8000/progress').then(r => r.json()).then(data => {
+                const activeIds = Object.keys(data).filter(id => data[id].status !== "Completado" && data[id].status !== "Cancelado" && data[id].status !== "Error");
+                if (activeIds.length === 0) {
+                    chrome.action.setBadgeText({text: sniffedUrls[details.tabId].size.toString(), tabId: details.tabId});
+                    chrome.action.setBadgeBackgroundColor({color: '#ff0055', tabId: details.tabId});
+                }
+            }).catch(() => {});
         }
-    }
-  },
-  { urls: ["<all_urls>"] },
-  ["responseHeaders"]
+    },
+    {urls: ["<all_urls>"]},
+    ["responseHeaders"]
 );
 
-// Limpiar la lista si el usuario recarga o cierra la pestaña
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    if (changeInfo.status === 'loading') {
-        sniffedUrls[tabId] = new Set();
-        chrome.action.setBadgeText({ text: '', tabId: tabId });
+// Limpiar memoria cuando se cierra una pestaña
+chrome.tabs.onRemoved.addListener(function(tabId) {
+    if (sniffedUrls[tabId]) {
+        delete sniffedUrls[tabId];
     }
 });
-chrome.tabs.onRemoved.addListener((tabId) => {
-    delete sniffedUrls[tabId];
-});
 
-
-// --- COMUNICADOR CENTRAL ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "download_video" || request.action === "execute_download" || request.action === "download_floating") {
+    if (request.action === "get_sniffed_urls") {
+        let urls = sniffedUrls[request.tabId] ? Array.from(sniffedUrls[request.tabId]) : [];
+        sendResponse({urls: urls});
+        return true;
+    }
+    
+    if (request.action === "download_video" || request.action === "download_floating" || request.action === "execute_download") {
         
         let finalUrl = request.url;
         
         // Magia 1: Rescatar el título real de la página (no el del iframe)
         const finalTitle = (sender.tab && sender.tab.title) ? sender.tab.title : (request.title || request.filename);
 
-        // Magia 2: Si el botón flotante capturó una URL inservible (iframe, blob, página), usamos lo que el sabueso de red atrapó.
+        // Magia 2: Si el botón flotante capturó una URL inservible, usamos lo que el sabueso atrapó.
         if (request.action === "download_floating") {
             const looksLikeVideo = finalUrl.includes('.mp4') || finalUrl.includes('.m3u8') || finalUrl.includes('.mkv') || finalUrl.includes('.webm') || finalUrl.includes('.mpd');
             
             if (!looksLikeVideo && sender.tab && sniffedUrls[sender.tab.id] && sniffedUrls[sender.tab.id].size > 0) {
                 const arr = Array.from(sniffedUrls[sender.tab.id]);
-                finalUrl = arr[arr.length - 1]; // Tomar el último archivo real que atrapamos
+                finalUrl = arr[arr.length - 1]; // Tomar el último archivo real
             }
         }
-
+        
         fetch('http://127.0.0.1:8000/download', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 url: finalUrl, 
                 is_video: request.action === "download_video" || request.action === "download_floating",
-                title: finalTitle
+                title: finalTitle,
+                quality: request.quality
             })
         })
         .then(res => {
-            if(res.ok) sendResponse({ success: true });
-            else sendResponse({ success: false });
+            if (!badgeInterval) {
+                checkDownloads(); // Iniciar el ciclo de chequeo para la insignia verde inmediatamente
+            }
+            sendResponse({success: true});
         })
         .catch(err => {
-            sendResponse({ success: false });
+            console.error(err);
+            sendResponse({success: false});
         });
-        return true; // Necesario para enviar respuesta de forma asíncrona
-    }
-    
-    if (request.action === "get_sniffed_urls") {
-        const urls = sniffedUrls[request.tabId] ? Array.from(sniffedUrls[request.tabId]) : [];
-        sendResponse({ urls: urls });
-        return true;
+        
+        return true; // Necesario para sendResponse asíncrono
     }
 });
