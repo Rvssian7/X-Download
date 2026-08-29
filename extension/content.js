@@ -202,3 +202,48 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
     });
 })();
+
+// --- SISTEMA DE NOTIFICACIONES (TOASTS) ---
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "show_toast") {
+        const toast = document.createElement('div');
+        toast.innerHTML = request.message;
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(18, 18, 18, 0.95);
+            color: #fff;
+            border: 1px solid #333;
+            border-left: 4px solid #00ff88;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 2147483647;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: translateY(30px);
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        `;
+        document.body.appendChild(toast);
+        
+        // Animación de entrada
+        setTimeout(() => {
+            toast.style.transform = 'translateY(0)';
+            toast.style.opacity = '1';
+        }, 10);
+        
+        // Desaparecer a los 3.5 segundos
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+});

@@ -157,6 +157,16 @@ chrome.downloads.onCreated.addListener((item) => {
         let title = item.filename || item.url.split('/').pop() || "Archivo";
         title = title.split(/[\\/]/).pop();
         
+        // Disparar Notificación Visual en la pestaña actual
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    action: "show_toast",
+                    message: `<span style="font-size: 16px;">🚀</span> <div><div style="color: #00ff88; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">X-Download</div><div>Descarga interceptada: <span style="color: #aaa;">${title}</span></div></div>`
+                }).catch(() => {}); // Ignorar error si la página no permite inyección
+            }
+        });
+        
         // 3. Enviarlo al motor de X-Download
         fetch('http://127.0.0.1:8000/download', {
             method: 'POST',
