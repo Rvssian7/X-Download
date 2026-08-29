@@ -86,7 +86,7 @@ async def download(req: DownloadRequest):
     # Smart GitHub detection centralizada en el servidor
     if req.url.startswith("https://github.com/") and not req.url.endswith(".zip") and "/releases/" not in req.url:
         import re
-        match = re.match(r'^https://github\.com/([^/]+)/([^/?#]+)', req.url)
+        match = re.match(r'^https://github\.com/([^/]+)/([^/?#]+)/?$', req.url)
         if match:
             repo_path = f"{match.group(1)}/{match.group(2)}"
             if repo_path.endswith(".git"): 
