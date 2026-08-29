@@ -118,7 +118,7 @@ async def run_download_process(did: str):
             }
             fmt = q_map.get(d.get("quality", "best"), "bestvideo+bestaudio/best")
             
-            cmd = ["yt-dlp", "-f", fmt, "--newline", "--no-check-certificate"]
+            cmd = ["yt-dlp", "-f", fmt, "--newline", "--no-check-certificate", "-N", "8"]
             if speed_limit:
                 cmd.extend(["--limit-rate", speed_limit])
             if d.get("quality") == "audio":
