@@ -13,10 +13,12 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        self.mark_changed() # Enviar el estado actual al nuevo cliente inmediatamente
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+        self.mark_changed()
 
     async def broadcast_progress(self, progress_data: dict):
         for connection in self.active_connections:
