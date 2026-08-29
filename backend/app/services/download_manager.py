@@ -7,6 +7,7 @@ from app.services.history_service import load_history, save_history
 from app.services.notifications import notify_mac
 from app.services.logger import logger
 from app.services.settings_service import load_settings
+from app.services.websocket_manager import manager
 
 # Estado global Singleton
 downloads = load_history()
@@ -98,6 +99,7 @@ async def run_download_process(did: str):
             return
             
         d["status"] = "Descargando"
+        manager.mark_changed()
         save_history(downloads)
         
         settings = load_settings()
@@ -144,11 +146,15 @@ async def run_download_process(did: str):
                 if d["is_video"]:
                     if "[download]" in text and "%" in text:
                         m = re.search(r'([0-9.]+)%.*?of\s+([~0-9.a-zA-Z]+).*?at\s+([0-9.a-zA-Z/]+).*?ETA\s+([0-9:]+)', text)
-                        if m: d["percent"], d["size"], d["speed"], d["eta"] = m.group(1)+"%", m.group(2), m.group(3), m.group(4)
+                        if m: 
+                            d["percent"], d["size"], d["speed"], d["eta"] = m.group(1)+"%", m.group(2), m.group(3), m.group(4)
+                            manager.mark_changed()
                 else:
                     if "%" in text and "ETA:" in text:
                         m = re.search(r'([0-9.]+[a-zA-Z]+)/([0-9.]+[a-zA-Z]+)\(([0-9.]+)%\).*?DL:([0-9.]+[a-zA-Z]+).*?ETA:([a-zA-Z0-9]+)', text)
-                        if m: d["size"], d["percent"], d["speed"], d["eta"] = m.group(2), m.group(3)+"%", m.group(4)+"/s", m.group(5)
+                        if m: 
+                            d["size"], d["percent"], d["speed"], d["eta"] = m.group(2), m.group(3)+"%", m.group(4)+"/s", m.group(5)
+                            manager.mark_changed()
                 
                 loop_counter += 1
                 if loop_counter % 20 == 0: save_history(downloads)
@@ -163,8 +169,10 @@ async def run_download_process(did: str):
                 else:
                     d["status"] = "Error"
                 save_history(downloads)
+                manager.mark_changed()
         except Exception as e:
             logger.error(f"Excepción grave en proceso {did}: {str(e)}")
             if d["status"] == "Descargando":
                 d["status"] = "Error"
                 save_history(downloads)
+                manager.mark_changed()

@@ -1,9 +1,14 @@
 from fastapi import WebSocket
 from typing import List
+import asyncio
 
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self.state_changed = asyncio.Event()
+
+    def mark_changed(self):
+        self.state_changed.set()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()

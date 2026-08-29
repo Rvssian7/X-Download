@@ -26,9 +26,12 @@ app.include_router(endpoints.router)
 templates = Jinja2Templates(directory="templates")
 
 async def progress_broadcaster():
-    logger.info("Iniciando tarea en segundo plano: Broadcasting WebSockets")
+    logger.info("Iniciando tarea en segundo plano: Broadcasting WebSockets (Basado en Eventos)")
     while True:
         try:
+            await manager.state_changed.wait()
+            manager.state_changed.clear()
+            
             if manager.active_connections:
                 downloads = get_downloads()
                 res = {}
@@ -42,12 +45,15 @@ async def progress_broadcaster():
                         "eta": v.get("eta", ""),
                         "size": v.get("size", ""),
                         "is_video": v["is_video"],
-                        "quality": v.get("quality", "best")
+                        "quality": v.get("quality", "best"),
+                        "created_at": v.get("created_at", "")
                     }
                 await manager.broadcast_progress(res)
         except Exception as e:
             logger.error(f"Error en WebSocket broadcaster: {str(e)}")
-        await asyncio.sleep(1)
+        
+        # Throttling: máximo 2 envíos por segundo para evitar saturar el WebSocket
+        await asyncio.sleep(0.5)
 
 @app.on_event("startup")
 async def startup_event():

@@ -38,30 +38,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             modal.remove();
         };
 
-        document.getElementById('xd-start').onclick = async () => {
+        document.getElementById('xd-start').onclick = () => {
             const btn = document.getElementById('xd-start');
             btn.innerText = "⏳ Enviando...";
             btn.disabled = true;
-            try {
-                await fetch('http://127.0.0.1:8000/download', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        url: request.url, 
-                        is_video: false, 
-                        title: request.filename 
-                    })
-                });
-                btn.innerText = "✅ ¡Enviado!";
-                btn.style.background = "#28a745";
-                btn.style.color = "#fff";
-                setTimeout(() => modal.remove(), 1000);
-            } catch (e) {
-                btn.innerText = "❌ Error";
-                btn.style.background = "#dc3545";
-                btn.style.color = "#fff";
-                setTimeout(() => modal.remove(), 2000);
-            }
+            
+            chrome.runtime.sendMessage({
+                action: "execute_download",
+                url: request.url,
+                filename: request.filename
+            }, (res) => {
+                if (res && res.success) {
+                    btn.innerText = "✅ ¡Enviado!";
+                    btn.style.background = "#28a745";
+                    btn.style.color = "#fff";
+                    setTimeout(() => modal.remove(), 1000);
+                } else {
+                    btn.innerText = "❌ Error";
+                    btn.style.background = "#dc3545";
+                    btn.style.color = "#fff";
+                    setTimeout(() => modal.remove(), 2000);
+                }
+            });
         };
     }
 });

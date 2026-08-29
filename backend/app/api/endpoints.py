@@ -3,6 +3,7 @@ import asyncio
 from fastapi import APIRouter
 from app.models.schemas import ActionRequest, DownloadRequest, SettingsRequest
 from app.services.download_manager import get_downloads, save_history, run_download_process, delete_download_files
+from app.services.websocket_manager import manager
 from app.services.logger import logger
 from datetime import datetime
 
@@ -60,6 +61,7 @@ async def handle_action(req: ActionRequest):
             del downloads[req.id]
             
         save_history(downloads)
+        manager.mark_changed()
             
     elif req.action == "resume":
         if d["status"] in ["Pausado", "Error", "Cancelado"]:
@@ -67,6 +69,7 @@ async def handle_action(req: ActionRequest):
             logger.info(f"Reanudando descarga {req.id}")
             asyncio.create_task(run_download_process(req.id))
             save_history(downloads)
+            manager.mark_changed()
             
     elif req.action == "start_video":
         d["status"] = "Iniciando..."
@@ -74,6 +77,7 @@ async def handle_action(req: ActionRequest):
         logger.info(f"Iniciando video {req.id} con calidad {req.quality}")
         asyncio.create_task(run_download_process(req.id))
         save_history(downloads)
+        manager.mark_changed()
             
     return {"status": "ok"}
 
@@ -99,6 +103,7 @@ async def download(req: DownloadRequest):
     save_history(downloads)
     if not req.is_video:
         asyncio.create_task(run_download_process(did))
+    manager.mark_changed()
     return {"status": "started", "id": did}
 
 from app.services.settings_service import load_settings, save_settings

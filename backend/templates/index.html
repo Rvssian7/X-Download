@@ -108,23 +108,30 @@
 
         function renderProgress(data) {
             const container = document.getElementById('downloads-container');
-            const ids = Object.keys(data);
-            
-            if (ids.length === 0) { 
-                container.innerHTML = '<p style="color: #444; font-size: 13px;">No hay descargas recientes.</p>'; 
-                return; 
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = '<p style="color: #444; font-size: 13px;">No hay descargas recientes.</p>';
+                return;
             }
             
-            if (container.innerHTML.includes('No hay descargas recientes')) container.innerHTML = '';
-            
+            if (container.innerHTML.includes("No hay descargas recientes.")) {
+                container.innerHTML = '';
+            }
+
             Array.from(container.children).forEach(child => {
                 if (child.id && child.id.startsWith('dl_')) {
                     const realId = child.id.replace('dl_', '');
                     if (!data[realId]) child.remove();
                 }
             });
+
+            // Sort keys by created_at (oldest first, so prepending puts newest at top)
+            let sortedKeys = Object.keys(data).sort((a, b) => {
+                let dateA = new Date(data[a].created_at || '1970-01-01').getTime();
+                let dateB = new Date(data[b].created_at || '1970-01-01').getTime();
+                return dateA - dateB;
+            });
             
-            ids.reverse().forEach(id => {
+            sortedKeys.forEach(id => {
                 const info = data[id];
                 let dlDiv = document.getElementById('dl_' + id);
                 
@@ -286,9 +293,11 @@
             
             // Smart GitHub detection
             if (url.includes("github.com") && !url.endsWith(".zip")) {
-                const match = url.match(/github\.com\/([^\/]+\/[^\/]+)/);
+                const match = url.match(/github\.com\/([^\/]+\/[^\/\?#]+)/);
                 if (match) {
-                    url = `https://github.com/${match[1]}/archive/refs/heads/main.zip`;
+                    let repoPath = match[1];
+                    if (repoPath.endsWith(".git")) repoPath = repoPath.slice(0, -4);
+                    url = `https://github.com/${repoPath}/archive/refs/heads/main.zip`;
                 }
             }
             
