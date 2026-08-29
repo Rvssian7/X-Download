@@ -1,12 +1,23 @@
 chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     const tab = tabs[0];
     
-    // Funcionalidad del nuevo botón para capturar la página completa
     const btnPage = document.getElementById('btn-page');
     if (btnPage) {
         btnPage.onclick = () => {
             btnPage.innerText = "⏳ Enviando...";
-            chrome.runtime.sendMessage({ action: "download_video", url: tab.url, title: tab.title }, (res) => {
+            let targetUrl = tab.url;
+            let targetTitle = tab.title;
+            
+            // Smart GitHub detection
+            if (targetUrl.includes("github.com") && !targetUrl.endsWith(".zip")) {
+                const match = targetUrl.match(/github\.com\/([^\/]+\/[^\/]+)/);
+                if (match) {
+                    targetUrl = `https://github.com/${match[1]}/archive/refs/heads/main.zip`;
+                    targetTitle = match[1] + " (Código Fuente)";
+                }
+            }
+            
+            chrome.runtime.sendMessage({ action: "download_video", url: targetUrl, title: targetTitle }, (res) => {
                 if (res && res.success) {
                     btnPage.innerText = "✅ ¡Enviado al Panel!";
                     btnPage.style.background = "#28a745";

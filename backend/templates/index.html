@@ -83,6 +83,12 @@
             <button onclick="openSettings()" style="background: transparent; border: none; font-size: 20px; padding: 0; margin: 0; color: #666;">⚙️</button>
         </div>
         <p class="header-meta">Almacenamiento: <span class="path" id="display-path">{{ download_dir }}</span></p>
+        
+        <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+            <input type="text" id="manual-url" placeholder="Pega cualquier enlace aquí (YouTube, ZIP, PDF...)" style="flex: 1; padding: 10px; border-radius: 8px; background: #0a0a0a; border: 1px solid #333; color: #fff; outline: none; font-size: 13px;">
+            <button class="btn-start" onclick="sendManualUrl()">Descargar</button>
+        </div>
+
         <div id="downloads-container"><p style="color: #444; font-size: 13px;">No hay descargas recientes.</p></div>
     </div>
 
@@ -271,6 +277,38 @@
                 document.getElementById('set-speed').value = data.speed_limit;
                 document.getElementById('display-path').innerText = data.download_dir;
             } catch(e) {}
+        }
+
+        async function sendManualUrl() {
+            const urlInput = document.getElementById('manual-url');
+            let url = urlInput.value.trim();
+            if (!url) return;
+            
+            // Smart GitHub detection
+            if (url.includes("github.com") && !url.endsWith(".zip")) {
+                const match = url.match(/github\.com\/([^\/]+\/[^\/]+)/);
+                if (match) {
+                    url = `https://github.com/${match[1]}/archive/refs/heads/main.zip`;
+                }
+            }
+            
+            let isVideo = url.includes("youtube.com") || url.includes("youtu.be") || url.includes("vimeo.com");
+            
+            urlInput.value = 'Enviando...';
+            urlInput.disabled = true;
+            
+            await fetch('/download', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    url: url,
+                    is_video: isVideo,
+                    title: "Descarga Manual"
+                })
+            });
+            
+            urlInput.value = '';
+            urlInput.disabled = false;
         }
 
         loadInitialSettings();
