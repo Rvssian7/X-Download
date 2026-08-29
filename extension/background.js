@@ -109,9 +109,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         
         let finalUrl = request.url;
         
-        // Magia: Si el botón flotante capturó una URL inservible (iframe, blob, página), usamos lo que el sabueso de red atrapó.
+        // Magia 1: Rescatar el título real de la página (no el del iframe)
+        const finalTitle = (sender.tab && sender.tab.title) ? sender.tab.title : (request.title || request.filename);
+
+        // Magia 2: Si el botón flotante capturó una URL inservible (iframe, blob, página), usamos lo que el sabueso de red atrapó.
         if (request.action === "download_floating") {
-            const looksLikeVideo = finalUrl.includes('.mp4') || finalUrl.includes('.m3u8') || finalUrl.includes('.mkv') || finalUrl.includes('.webm');
+            const looksLikeVideo = finalUrl.includes('.mp4') || finalUrl.includes('.m3u8') || finalUrl.includes('.mkv') || finalUrl.includes('.webm') || finalUrl.includes('.mpd');
             
             if (!looksLikeVideo && sender.tab && sniffedUrls[sender.tab.id] && sniffedUrls[sender.tab.id].size > 0) {
                 const arr = Array.from(sniffedUrls[sender.tab.id]);
@@ -125,7 +128,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             body: JSON.stringify({ 
                 url: finalUrl, 
                 is_video: request.action === "download_video" || request.action === "download_floating",
-                title: request.title || request.filename
+                title: finalTitle
             })
         })
         .then(res => {
