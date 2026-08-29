@@ -132,3 +132,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true; // Necesario para sendResponse asíncrono
     }
 });
+
+// --- SECUESTRADOR DE DESCARGAS (ESTILO IDM) ---
+chrome.downloads.onCreated.addListener((item) => {
+    // Solo secuestrar descargas de internet reales, ignorar archivos internos (blob, data)
+    if (!item.url.startsWith("http")) return;
+    
+    // Verificamos en milisegundos si nuestro motor (FastAPI) está encendido
+    fetch('http://127.0.0.1:8000/ping')
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "ok") {
+                // 1. Cancelar la descarga nativa lenta de Chrome
+                chrome.downloads.cancel(item.id);
+                
+                // 2. Extraer un nombre bonito (ej. archivo.zip)
+                let title = item.filename || item.url.split('/').pop() || "Archivo";
+                title = title.split(/[\\/]/).pop(); // Limpiar rutas de carpetas si Chrome las pone
+                
+                // 3. Enviarlo al motor de X-Download por debajo de la mesa
+                fetch('http://127.0.0.1:8000/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        url: item.url, 
+                        is_video: false,
+                        title: title
+                    })
+                }).then(() => {
+                    // 4. Encender el radar de la insignia verde
+                    if (!badgeInterval) {
+                        checkDownloads();
+                    }
+                }).catch(err => console.error("Error al enviar al gestor", err));
+            }
+        })
+        .catch(err => {
+            // Si hay error (servidor apagado), no hacemos nada y dejamos que Chrome lo descargue normal.
+            console.log("Motor apagado. Descargando con Chrome nativo.");
+        });
+});
