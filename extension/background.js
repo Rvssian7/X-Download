@@ -17,14 +17,14 @@ chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
                 const targetUrl = downloadItem.finalUrl || downloadItem.url;
                 const targetName = downloadItem.filename || "Descarga Directa";
                 
-                const popupUrl = chrome.runtime.getURL(`confirm.html?url=${encodeURIComponent(targetUrl)}&filename=${encodeURIComponent(targetName)}`);
-                
-                chrome.windows.create({
-                    url: popupUrl,
-                    type: "popup",
-                    width: 450,
-                    height: 250,
-                    focused: true
+                chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+                    if (tabs.length > 0) {
+                        chrome.tabs.sendMessage(tabs[0].id, {
+                            action: "show_confirm",
+                            url: targetUrl,
+                            filename: targetName
+                        });
+                    }
                 });
             }
             suggest();
