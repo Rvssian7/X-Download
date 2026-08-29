@@ -163,6 +163,7 @@
                         </div>
                         <div class="controls" id="ctrl_${id}">${controlsHtml}</div>
                     `;
+                    container.prepend(dlDiv);
                 }
                 
                 let isActive = (info.status === "Descargando" || info.status === "Iniciando..." || info.status === "En cola");
