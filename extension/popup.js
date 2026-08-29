@@ -1,8 +1,29 @@
 chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-    const tabId = tabs[0].id;
+    const tab = tabs[0];
+    
+    // Funcionalidad del nuevo botón para capturar la página completa
+    const btnPage = document.getElementById('btn-page');
+    if (btnPage) {
+        btnPage.onclick = () => {
+            btnPage.innerText = "⏳ Enviando...";
+            chrome.runtime.sendMessage({ action: "download_video", url: tab.url, title: tab.title }, (res) => {
+                if (res && res.success) {
+                    btnPage.innerText = "✅ ¡Enviado al Panel!";
+                    btnPage.style.background = "#28a745";
+                } else {
+                    btnPage.innerText = "❌ Backend apagado";
+                    btnPage.style.background = "#dc3545";
+                }
+                setTimeout(() => {
+                    btnPage.innerText = "⬇ Descargar esta página web";
+                    btnPage.style.background = "#111";
+                }, 3000);
+            });
+        };
+    }
     
     // Pedirle al background.js la lista de URLs olfateadas
-    chrome.runtime.sendMessage({action: "get_sniffed_urls", tabId: tabId}, (response) => {
+    chrome.runtime.sendMessage({action: "get_sniffed_urls", tabId: tab.id}, (response) => {
         const list = document.getElementById('list');
         
         if (!response || !response.urls || response.urls.length === 0) {
