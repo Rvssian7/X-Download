@@ -64,3 +64,140 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         };
     }
 });
+
+// --- BOTÓN FLOTANTE ESTILO IDM ---
+(function() {
+    // 1. Crear el botón flotante
+    const floatBtn = document.createElement('div');
+    floatBtn.id = 'xd-float-btn';
+    floatBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 5px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Descargar Video
+    `;
+    floatBtn.style.cssText = `
+        position: fixed;
+        z-index: 2147483647;
+        background: rgba(18, 18, 18, 0.85);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        backdrop-filter: blur(5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        transition: opacity 0.2s, background 0.2s;
+        opacity: 0.75;
+    `;
+    
+    // Hover effects
+    floatBtn.onmouseover = () => { 
+        floatBtn.style.opacity = '1'; 
+        floatBtn.style.background = 'rgba(30, 30, 30, 0.95)'; 
+    };
+    floatBtn.onmouseout = () => { 
+        floatBtn.style.opacity = '0.75'; 
+        floatBtn.style.background = 'rgba(18, 18, 18, 0.85)'; 
+    };
+    
+    // Inyectar al DOM cuando esté listo
+    if (document.body) document.body.appendChild(floatBtn);
+    else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(floatBtn));
+
+    let currentVideoUrl = "";
+    
+    // Acción de descargar
+    floatBtn.onclick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        floatBtn.innerHTML = "⏳ Enviando...";
+        
+        // Usar la URL directa del video si la tiene, de lo contrario enviar la página al Sniffer
+        let urlToSend = currentVideoUrl;
+        if (!urlToSend || urlToSend.startsWith('blob:')) {
+            urlToSend = window.location.href; // El sabueso (yt-dlp) se encargará
+        }
+        
+        chrome.runtime.sendMessage({
+            action: "download_video",
+            url: urlToSend,
+            title: document.title
+        }, (res) => {
+            if (res && res.success) {
+                floatBtn.innerHTML = "✅ ¡Enviado al Panel!";
+                floatBtn.style.background = "rgba(40, 167, 69, 0.9)";
+            } else {
+                floatBtn.innerHTML = "❌ Error al conectar";
+                floatBtn.style.background = "rgba(220, 53, 69, 0.9)";
+            }
+            setTimeout(() => {
+                floatBtn.style.display = 'none';
+                floatBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 5px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Descargar Video`;
+            }, 3000);
+        });
+    };
+
+    let hideTimeout;
+    let lastMove = 0;
+    
+    // El "Vigilante Ninja" - Detecta videos al pasar el mouse
+    document.addEventListener('mousemove', (e) => {
+        const now = Date.now();
+        if (now - lastMove < 50) return; // Throttling: Max 20 veces por segundo para no gastar CPU
+        lastMove = now;
+        
+        const videos = document.getElementsByTagName('video');
+        let foundHover = false;
+        
+        for (let i = 0; i < videos.length; i++) {
+            const rect = videos[i].getBoundingClientRect();
+            // Ignorar reproductores minúsculos o invisibles
+            if (rect.width < 150 || rect.height < 100) continue;
+            
+            // ¿El mouse está dentro de este video?
+            if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                
+                foundHover = true;
+                
+                // Posicionar el botón flotante en la esquina superior derecha del video
+                floatBtn.style.display = 'flex';
+                floatBtn.style.top = (rect.top + 15) + 'px';
+                
+                // Si el botón ya tiene ancho, ajustamos. Si es nuevo, asumimos ~120px
+                const btnWidth = floatBtn.offsetWidth || 120;
+                floatBtn.style.left = (rect.right - btnWidth - 15) + 'px';
+                
+                currentVideoUrl = videos[i].src || videos[i].currentSrc || window.location.href;
+                
+                clearTimeout(hideTimeout);
+                break; 
+            }
+        }
+        
+        // También mantenerlo visible si el mouse está posado sobre el botón mismo
+        if (floatBtn.style.display !== 'none') {
+            const btnRect = floatBtn.getBoundingClientRect();
+            if (e.clientX >= btnRect.left && e.clientX <= btnRect.right &&
+                e.clientY >= btnRect.top && e.clientY <= btnRect.bottom) {
+                foundHover = true;
+                clearTimeout(hideTimeout);
+            }
+        }
+        
+        // Si el mouse salió del video y del botón, esconder con un pequeño retraso
+        if (!foundHover && floatBtn.style.display !== 'none') {
+            hideTimeout = setTimeout(() => {
+                floatBtn.style.display = 'none';
+            }, 300);
+        }
+    });
+})();
