@@ -1,3 +1,4 @@
+const SERVER_URL = SERVER_URL;
 chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     const tab = tabs[0];
     
@@ -5,7 +6,7 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     const btnPanel = document.getElementById('btn-panel');
     if (btnPanel) {
         btnPanel.onclick = () => {
-            chrome.tabs.create({ url: "http://127.0.0.1:8000" });
+            chrome.tabs.create({ url: SERVER_URL });
         };
     }
     
@@ -13,19 +14,9 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     if (btnPage) {
         btnPage.onclick = () => {
             btnPage.innerText = "⏳ Enviando...";
+            btnPage.disabled = true;
             let targetUrl = tab.url;
             let targetTitle = tab.title;
-            
-            // Smart GitHub detection
-            if (targetUrl.includes("github.com") && !targetUrl.endsWith(".zip")) {
-                const match = targetUrl.match(/github\.com\/([^\/]+\/[^\/\?#]+)/);
-                if (match) {
-                    let repoPath = match[1];
-                    if (repoPath.endsWith(".git")) repoPath = repoPath.slice(0, -4);
-                    targetUrl = `https://github.com/${repoPath}/archive/refs/heads/main.zip`;
-                    targetTitle = repoPath + " (Código Fuente)";
-                }
-            }
             
             chrome.runtime.sendMessage({ action: "download_video", url: targetUrl, title: targetTitle }, (res) => {
                 if (res && res.success) {

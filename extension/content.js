@@ -1,3 +1,4 @@
+const SERVER_URL = "http://127.0.0.1:8000";
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "show_confirm") {
         // Prevent multiple modals

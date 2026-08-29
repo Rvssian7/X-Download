@@ -291,16 +291,6 @@
             let url = urlInput.value.trim();
             if (!url) return;
             
-            // Smart GitHub detection
-            if (url.includes("github.com") && !url.endsWith(".zip")) {
-                const match = url.match(/github\.com\/([^\/]+\/[^\/\?#]+)/);
-                if (match) {
-                    let repoPath = match[1];
-                    if (repoPath.endsWith(".git")) repoPath = repoPath.slice(0, -4);
-                    url = `https://github.com/${repoPath}/archive/refs/heads/main.zip`;
-                }
-            }
-            
             let isVideo = url.includes("youtube.com") || url.includes("youtu.be") || url.includes("vimeo.com");
             
             urlInput.value = 'Enviando...';
