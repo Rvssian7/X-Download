@@ -1,7 +1,7 @@
 import uuid
 import asyncio
 from fastapi import APIRouter
-from app.models.schemas import ActionRequest, DownloadRequest
+from app.models.schemas import ActionRequest, DownloadRequest, SettingsRequest
 from app.services.download_manager import get_downloads, save_history, run_download_process, delete_download_files
 from app.services.logger import logger
 
@@ -92,3 +92,20 @@ async def download(req: DownloadRequest):
     if not req.is_video:
         asyncio.create_task(run_download_process(did))
     return {"status": "started", "id": did}
+
+from app.services.settings_service import load_settings, save_settings
+from app.services.download_manager import update_semaphore_limit
+
+@router.get("/settings")
+def get_settings():
+    return load_settings()
+
+@router.post("/settings")
+async def update_settings(req: SettingsRequest):
+    settings = load_settings()
+    settings["download_dir"] = req.download_dir
+    settings["max_concurrent"] = max(1, req.max_concurrent)
+    settings["speed_limit"] = req.speed_limit
+    save_settings(settings)
+    await update_semaphore_limit(settings["max_concurrent"])
+    return {"status": "ok"}

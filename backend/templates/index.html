@@ -41,12 +41,48 @@
         
         select { padding: 8px 12px; border-radius: 8px; background: #0a0a0a; color: #ccc; border: 1px solid #333; outline: none; font-size: 12px; appearance: auto; }
         select:focus { border-color: #666; }
+        
+        /* Modal Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999; }
+        .modal { background: #121212; border: 1px solid #333; border-radius: 12px; width: 100%; max-width: 400px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal h2 { margin-top: 0; font-size: 18px; margin-bottom: 20px; font-weight: 500; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; }
+        .form-group input { width: 100%; box-sizing: border-box; padding: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 13px; outline: none; }
+        .form-group input:focus { border-color: #00ffcc; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
     </style>
 </head>
 <body>
+    <!-- Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h2>⚙️ Configuración (V2)</h2>
+            <div class="form-group">
+                <label>Directorio Base de Descargas</label>
+                <input type="text" id="set-dir" placeholder="/Users/ruta/Downloads">
+            </div>
+            <div class="form-group">
+                <label>Máximas Descargas Simultáneas</label>
+                <input type="number" id="set-limit" min="1" max="20" placeholder="3">
+            </div>
+            <div class="form-group">
+                <label>Límite de Velocidad Global (Opcional)</label>
+                <input type="text" id="set-speed" placeholder="Ej: 5M, 500K (Vacío para ilimitado)">
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeSettings()">Cancelar</button>
+                <button class="btn-start" onclick="saveSettings()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
-        <h1>X-Download</h1>
-        <p class="header-meta">Almacenamiento: <span class="path">{{ download_dir }}</span></p>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>X-Download</h1>
+            <button onclick="openSettings()" style="background: transparent; border: none; font-size: 20px; padding: 0; margin: 0; color: #666;">⚙️</button>
+        </div>
+        <p class="header-meta">Almacenamiento: <span class="path" id="display-path">{{ download_dir }}</span></p>
         <div id="downloads-container"><p style="color: #444; font-size: 13px;">No hay descargas recientes.</p></div>
     </div>
 
@@ -191,6 +227,48 @@
         ws.onclose = function(e) {
             console.error('WebSocket cerrado. Se requiere recargar.');
         };
+
+        function openSettings() {
+            document.getElementById('settings-modal').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        async function saveSettings() {
+            const data = {
+                download_dir: document.getElementById('set-dir').value,
+                max_concurrent: parseInt(document.getElementById('set-limit').value) || 3,
+                speed_limit: document.getElementById('set-speed').value
+            };
+            
+            const btn = document.querySelector('.modal-footer .btn-start');
+            btn.innerText = "Guardando...";
+            
+            await fetch('/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            
+            document.getElementById('display-path').innerText = data.download_dir;
+            btn.innerText = "Guardar Cambios";
+            closeSettings();
+        }
+
+        async function loadInitialSettings() {
+            try {
+                const res = await fetch('/settings');
+                const data = await res.json();
+                document.getElementById('set-dir').value = data.download_dir;
+                document.getElementById('set-limit').value = data.max_concurrent;
+                document.getElementById('set-speed').value = data.speed_limit;
+                document.getElementById('display-path').innerText = data.download_dir;
+            } catch(e) {}
+        }
+
+        loadInitialSettings();
     </script>
 </body>
 </html>
