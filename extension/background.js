@@ -1,20 +1,31 @@
 // --- INTERCEPTOR DE DESCARGAS NORMALES ---
-chrome.downloads.onCreated.addListener(async (downloadItem) => {
-    if (downloadItem.state === 'interrupted' || downloadItem.state === 'complete') return;
-    if (downloadItem.url.startsWith('data:') || downloadItem.url.startsWith('blob:')) return;
-    try {
-        const response = await fetch('http://127.0.0.1:8000/ping');
-        if (response.ok) {
-            chrome.downloads.cancel(downloadItem.id);
-            await fetch('http://127.0.0.1:8000/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: downloadItem.finalUrl || downloadItem.url, is_video: false })
-            });
-        }
-    } catch (e) {
-        console.log("Backend offline.");
+chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
+    if (downloadItem.state === 'interrupted' || downloadItem.state === 'complete') {
+        suggest();
+        return false;
     }
+    if (downloadItem.url.startsWith('data:') || downloadItem.url.startsWith('blob:')) {
+        suggest();
+        return false;
+    }
+    
+    fetch('http://127.0.0.1:8000/ping')
+        .then(res => {
+            if (res.ok) {
+                chrome.downloads.cancel(downloadItem.id);
+                fetch('http://127.0.0.1:8000/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: downloadItem.finalUrl || downloadItem.url, is_video: false, title: downloadItem.filename || "Descarga Directa" })
+                });
+            }
+            suggest();
+        })
+        .catch(e => {
+            suggest();
+        });
+        
+    return true; // Indica que suggest() se llamará de forma asíncrona
 });
 
 // --- SABUESO DE RED (NETWORK SNIFFER) ---
