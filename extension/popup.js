@@ -70,7 +70,8 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        const downloadIds = Object.keys(data);
+        // Invertimos las llaves para que la más reciente quede de primera
+        const downloadIds = Object.keys(data).reverse();
         
         if (downloadIds.length === 0) {
             dlArea.innerHTML = `<div class="dl-empty">No hay descargas activas</div>`;
@@ -91,7 +92,7 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
                 card.id = `dl-card-${id}`;
                 dlArea.appendChild(card);
                 
-                // Build initial structure
+                // Build initial structure with Waiting Area
                 card.innerHTML = `
                     <div class="dl-header">
                         <div class="dl-title" title="${dl.title}">${dl.title}</div>
@@ -100,12 +101,28 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
                             <button class="dl-btn danger" data-action="delete" data-id="${id}">❌</button>
                         </div>
                     </div>
-                    <div class="dl-progress-bg">
-                        <div class="dl-progress-fill" style="width: 0%; background: #ff0055;"></div>
+                    
+                    <!-- Formulario de Esperando Calidad -->
+                    <div class="dl-waiting-area" style="display: none; margin-bottom: 8px; justify-content: space-between; align-items: center;">
+                        <select class="dl-quality-select" style="background:#222; color:#fff; border:1px solid #333; border-radius:4px; padding:4px; font-size:10px; width: 68%;">
+                            <option value="best">Máxima Calidad (Auto)</option>
+                            <option value="1080">1080p</option>
+                            <option value="720">720p</option>
+                            <option value="480">480p</option>
+                            <option value="audio_only">Solo Audio (MP3)</option>
+                        </select>
+                        <button class="dl-btn-start" style="background:#ff0055; color:#fff; border:none; border-radius:4px; padding:4px 8px; font-size:10px; font-weight:bold; cursor:pointer;">▶ Iniciar</button>
                     </div>
-                    <div class="dl-stats">
-                        <span class="dl-status" style="color: #aaa;"></span>
-                        <span class="dl-info"></span>
+
+                    <!-- Progreso y Estadísticas -->
+                    <div class="dl-progress-container">
+                        <div class="dl-progress-bg">
+                            <div class="dl-progress-fill" style="width: 0%; background: #ff0055;"></div>
+                        </div>
+                        <div class="dl-stats">
+                            <span class="dl-status" style="color: #aaa;"></span>
+                            <span class="dl-info"></span>
+                        </div>
                     </div>
                 `;
                 
@@ -125,43 +142,72 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
                         body: JSON.stringify({ id: id, action: "delete" })
                     });
                 };
+                card.querySelector('.dl-btn-start').onclick = () => {
+                    const quality = card.querySelector('.dl-quality-select').value;
+                    fetch('http://127.0.0.1:8000/action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: id, action: "start_video", quality: quality })
+                    });
+                    // Feedback visual
+                    card.querySelector('.dl-btn-start').innerText = "⏳";
+                    card.querySelector('.dl-btn-start').style.background = "#555";
+                };
             }
             
-            // Now update the dynamic parts smoothly
+            // DOM Elements
             const playBtn = card.querySelector('.play-btn');
+            const waitingArea = card.querySelector('.dl-waiting-area');
+            const progressContainer = card.querySelector('.dl-progress-container');
+            const statusSpan = card.querySelector('.dl-status');
+            const infoSpan = card.querySelector('.dl-info');
+            const fillBar = card.querySelector('.dl-progress-fill');
+            
+            // Logic state
+            const isWaiting = dl.status === "Esperando Calidad";
             const isPaused = dl.status === "Pausado" || dl.status === "Cancelado";
             const isError = dl.status === "Error";
             const isDone = dl.status === "Completado";
-            
-            if (isDone || isError) {
-                playBtn.style.display = 'none'; // Hide play/pause if finished/error
+
+            if (isWaiting) {
+                waitingArea.style.display = 'flex';
+                progressContainer.style.display = 'none';
+                playBtn.style.display = 'none';
             } else {
-                playBtn.style.display = 'flex';
-                playBtn.innerText = isPaused ? "▶" : "⏸";
-                playBtn.setAttribute('data-action', isPaused ? "resume" : "pause");
+                waitingArea.style.display = 'none';
+                progressContainer.style.display = 'block';
+                
+                if (isDone || isError) {
+                    playBtn.style.display = 'none';
+                } else {
+                    playBtn.style.display = 'flex';
+                    playBtn.innerText = isPaused ? "▶" : "⏸";
+                    playBtn.setAttribute('data-action', isPaused ? "resume" : "pause");
+                }
             }
             
+            // Format Percent
             let rawPercent = 0;
             if (dl.percent) {
                 rawPercent = parseFloat(dl.percent.replace('%', ''));
             }
             if (isNaN(rawPercent)) rawPercent = 0;
-            if (dl.status === "Completado") rawPercent = 100;
+            if (isDone) rawPercent = 100;
             
+            // Format Colors
             let statusColor = "#aaa";
             let progressColor = "#ff0055"; 
-            if (dl.status === "Completado") { statusColor = "#28a745"; progressColor = "#28a745"; }
-            if (dl.status === "Error") { statusColor = "#dc3545"; progressColor = "#dc3545"; }
-            if (dl.status === "Pausado") { statusColor = "#ffc107"; progressColor = "#ffc107"; }
+            if (isDone) { statusColor = "#28a745"; progressColor = "#28a745"; }
+            if (isError) { statusColor = "#dc3545"; progressColor = "#dc3545"; }
+            if (isPaused) { statusColor = "#ffc107"; progressColor = "#ffc107"; }
+            if (isWaiting) { statusColor = "#00ccff"; }
             
-            card.querySelector('.dl-progress-fill').style.width = rawPercent + '%';
-            card.querySelector('.dl-progress-fill').style.background = progressColor;
-            
-            const statusSpan = card.querySelector('.dl-status');
+            // Apply updates
+            fillBar.style.width = rawPercent + '%';
+            fillBar.style.background = progressColor;
             statusSpan.innerText = `${dl.status} - ${dl.percent || "0%"}`;
             statusSpan.style.color = statusColor;
-            
-            card.querySelector('.dl-info').innerText = `${dl.speed || ""} • ${dl.size || ""}`;
+            infoSpan.innerText = `${dl.speed || ""} • ${dl.size || ""}`;
         });
         
         // Remove cards that no longer exist on server
