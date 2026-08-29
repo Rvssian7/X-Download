@@ -1,4 +1,4 @@
-const SERVER_URL = SERVER_URL;
+const SERVER_URL = "http://127.0.0.1:8000";
 chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     const tab = tabs[0];
     
