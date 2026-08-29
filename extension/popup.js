@@ -1,6 +1,14 @@
 chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     const tab = tabs[0];
     
+    // Botón para abrir el panel
+    const btnPanel = document.getElementById('btn-panel');
+    if (btnPanel) {
+        btnPanel.onclick = () => {
+            chrome.tabs.create({ url: "http://127.0.0.1:8000" });
+        };
+    }
+    
     const btnPage = document.getElementById('btn-page');
     if (btnPage) {
         btnPage.onclick = () => {
@@ -10,10 +18,12 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
             
             // Smart GitHub detection
             if (targetUrl.includes("github.com") && !targetUrl.endsWith(".zip")) {
-                const match = targetUrl.match(/github\.com\/([^\/]+\/[^\/]+)/);
+                const match = targetUrl.match(/github\.com\/([^\/]+\/[^\/\?#]+)/);
                 if (match) {
-                    targetUrl = `https://github.com/${match[1]}/archive/refs/heads/main.zip`;
-                    targetTitle = match[1] + " (Código Fuente)";
+                    let repoPath = match[1];
+                    if (repoPath.endsWith(".git")) repoPath = repoPath.slice(0, -4);
+                    targetUrl = `https://github.com/${repoPath}/archive/refs/heads/main.zip`;
+                    targetTitle = repoPath + " (Código Fuente)";
                 }
             }
             
