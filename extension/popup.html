@@ -4,31 +4,61 @@
     <meta charset="UTF-8">
     <title>X-Download</title>
     <style>
-        body { width: 320px; padding: 15px; font-family: system-ui, sans-serif; background: #f8f9fa; margin: 0; }
-        h3 { margin-top: 0; color: #333; font-size: 16px; border-bottom: 2px solid #ff0055; padding-bottom: 5px;}
-        .url-item { background: white; margin-bottom: 10px; padding: 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); word-break: break-all; font-size: 11px; color: #555;}
-        button { background: #ff0055; color: white; border: none; padding: 8px 10px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; margin-top: 8px; transition: 0.2s;}
-        button:hover { background: #ff3377; }
-        .help-text { color: #666; font-size: 13px; font-style: italic; text-align: center; margin-top: 20px;}
+        body { width: 340px; padding: 12px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0a0a; color: #fff; margin: 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; padding-bottom: 10px; margin-bottom: 10px; }
+        .header h3 { margin: 0; font-size: 15px; font-weight: 600; color: #fff; }
+        .btn-panel { background: #222; color: #fff; border: 1px solid #333; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; text-decoration: none; font-weight: bold;}
+        .btn-panel:hover { background: #333; }
+        
+        .main-btn { background: #1a1a1a; color: white; border: 1px solid #333; padding: 8px; cursor: pointer; border-radius: 6px; font-weight: bold; width: 100%; margin-bottom: 4px; transition: 0.2s; font-size: 12px;}
+        .main-btn:hover { background: #333; }
+        
+        .section-title { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 8px 2px; font-weight: bold;}
+        
+        #sniffer-area { background: #111; padding: 8px; border-radius: 6px; border: 1px dashed #333; margin-bottom: 5px; }
+        .sniffer-text { font-size: 11px; color: #555; text-align: center; margin: 0; font-style: italic;}
+        .url-item { background: #1a1a1a; padding: 8px; border-radius: 4px; margin-top: 5px; border: 1px solid #222; }
+        .url-item-title { font-size: 11px; color: #00ccff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; font-family: monospace;}
+        .btn-sniff { background: #ff0055; color: #fff; border: none; width: 100%; border-radius: 4px; padding: 5px; font-size: 11px; cursor: pointer; font-weight: bold;}
+        .btn-sniff:hover { background: #ff3377; }
+
+        #downloads-area { max-height: 220px; overflow-y: auto; padding-right: 4px; }
+        #downloads-area::-webkit-scrollbar { width: 4px; }
+        #downloads-area::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+        .dl-card { background: #111; border: 1px solid #222; border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+        .dl-header { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; }
+        .dl-title { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+        .dl-controls { display: flex; gap: 4px; }
+        .dl-btn { background: #222; border: 1px solid #333; color: #aaa; border-radius: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px;}
+        .dl-btn:hover { background: #333; color: #fff; }
+        .dl-btn.danger:hover { background: #ff0055; border-color: #ff0055; color: white;}
+        
+        .dl-progress-bg { background: #222; height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+        .dl-progress-fill { background: #ff0055; height: 100%; width: 0%; transition: width 0.3s ease; }
+        .dl-stats { display: flex; justify-content: space-between; font-size: 10px; color: #777; }
+        .dl-status { color: #aaa; }
+        
+        .dl-empty { text-align: center; font-size: 11px; color: #555; padding: 20px 0; font-style: italic;}
     </style>
 </head>
 <body>
-    <h3>X-Download</h3>
-    
-    <div style="text-align: center; margin-bottom: 15px;">
-        <button id="btn-panel" style="background: #333; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; width: 100%;">
-            🖥️ Abrir Panel de Control
-        </button>
+    <div class="header">
+        <h3>X-Download</h3>
+        <button id="btn-panel" class="btn-panel">Abrir Panel</button>
     </div>
     
-    <div style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
-        <button id="btn-page" style="background: #111;">⬇ Descargar esta página web</button>
-        <div style="font-size: 10px; color: #888; text-align: center; margin-top: 4px;">Útil para YouTube, Vimeo, Twitter, etc.</div>
+    <button id="btn-page" class="main-btn">⬇ Descargar página actual</button>
+    
+    <div id="sniffer-area">
+        <p class="sniffer-text">Olfateando streaming oculto...</p>
     </div>
 
-    <div id="list">
-        <p class="help-text">Olfateando streaming oculto...<br><br>Dale "Play" al video en páginas piratas para que el sabueso atrape los archivos.</p>
+    <div class="section-title">Descargas Activas</div>
+    <div id="downloads-area">
+        <div class="dl-empty">Conectando al servidor...</div>
     </div>
+
     <script src="popup.js"></script>
 </body>
 </html>

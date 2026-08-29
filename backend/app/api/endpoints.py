@@ -84,11 +84,11 @@ async def handle_action(req: ActionRequest):
 @router.post("/download")
 async def download(req: DownloadRequest):
     # Smart GitHub detection centralizada en el servidor
-    if "github.com/" in req.url and not req.url.endswith(".zip"):
+    if req.url.startswith("https://github.com/") and not req.url.endswith(".zip") and "/releases/" not in req.url:
         import re
-        match = re.search(r'github\.com/([^/]+/[^/?#]+)', req.url)
+        match = re.match(r'^https://github\.com/([^/]+)/([^/?#]+)/?$', req.url)
         if match:
-            repo_path = match.group(1)
+            repo_path = f"{match.group(1)}/{match.group(2)}"
             if repo_path.endswith(".git"): 
                 repo_path = repo_path[:-4]
             req.url = f"https://github.com/{repo_path}/archive/refs/heads/main.zip"
