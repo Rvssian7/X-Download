@@ -168,23 +168,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 
                 foundHover = true;
                 
-                // Posicionar el botón flotante JUSTO AFUERA (arriba) del video
+                
+                // Posicionar el botón flotante en la esquina superior IZQUIERDA
+                // Ya que estamos atrapados en un iframe y no podemos salir de él sin volvernos invisibles.
                 floatBtn.style.display = 'flex';
                 
-                const btnWidth = floatBtn.offsetWidth || 130;
-                const btnHeight = floatBtn.offsetHeight || 28;
-                
-                // Intentar ponerlo justo encima del borde superior
-                let targetTop = rect.top - btnHeight;
-                
-                // Si el video está pegado al techo del navegador y no hay espacio, lo bajamos un poco
-                if (targetTop < 0) {
-                    targetTop = rect.top + 5;
-                }
-                
-                floatBtn.style.top = targetTop + 'px';
-                // Alinearlo al borde derecho del video
-                floatBtn.style.left = (rect.right - btnWidth) + 'px';
+                // Lo ponemos a 10px del borde superior y 10px del borde izquierdo
+                floatBtn.style.top = (rect.top + 10) + 'px';
+                floatBtn.style.left = (rect.left + 10) + 'px';
                 
                 currentVideoUrl = videos[i].src || videos[i].currentSrc || window.location.href;
                 
